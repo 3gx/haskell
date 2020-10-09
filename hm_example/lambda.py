@@ -33,7 +33,10 @@ class ADT:
         yield from [getattr(self, field.name) for field in _dc.fields(self)]
 
     def __repr__(self) -> str:
-        string = f"{self.__class__.__name__}("
+        string = f"{self.__class__.__name__}"
+        if len(_dc.fields(self)) == 0:
+            return string
+        string += f"("
         keys = [field.name for field in _dc.fields(self)]
         for i, k in enumerate(keys):
             value = getattr(self, k)
@@ -42,7 +45,7 @@ class ADT:
             else:
                 string += f"{value}"
             if i < len(keys) - 1:
-                string += ","
+                string +=","
         string += ")"
         return string
 
@@ -145,10 +148,10 @@ class TUnit(ADT):
 def _unhandled(*args : TAny) -> TAny:
     err = "unhandled ("
     for i, arg in enumerate(args):
-        err += "{arg}:{type(arg)}"
+        err += f"{arg}:{type(arg)}"
         if i < len(args)-1:
             err += ","
-    err = ")"
+    err += ")"
     raise TypeError(f"unhandled {err}")
 
 def substituteTy(from_ : Typ, to : Typ, typ: Typ) -> Typ:
@@ -210,6 +213,117 @@ def infer1(c : Ctx, t : Term) -> Typ:
 
 ########
 
-#print(infer1(prims, trm_id)) #raises exception
+try:
+    print(infer1(prims, trm_id)) #raises exception
+except Exception as e:
+    print("Exception:", e)
+
 print(infer1(prims, trm_int))
-#print(infer1(prims, trm_id_unit)) #raises exception
+try:
+    print(infer1(prims, trm_id_unit)) #raises exception
+except Exception as e:
+    print("Exception:", e)
+
+@dataclass
+class State:
+    store : TDict[int, Typ] = _dc.field(default_factory=dict)
+    context : TDict[str, Typ] = _dc.field(default_factory=dict)
+    var_count : int = 0
+
+def newMetaVar(state : State) -> Typ:
+    v = state.var_count
+    state.var_count = v + 1
+    return TVar(v)
+
+def instantiate(x : Typ, state : State) -> Typ:
+    check_argument_types()
+    with _pm, x >> TLam as (v,ty):
+        mv = newMetaVar(state)
+        return instantiate(substituteTy(TBVar(v), mv, ty), state)
+    return x
+
+def infer2(trm : Term, state : State) -> Typ:
+    with _pm, trm >> KonstInt:
+        return TInt()
+    with _pm, trm >> Unit:
+        return TUnit()
+    with _pm, trm >> Var as (s,):
+        return instantiate(resolve(state.context[s], state), state)
+    with _pm, trm >> App as (t1,t2):
+        ty1 = infer2(t1, state)
+        ty2 = infer2(t2, state)
+        with _pm, ty1 >> TArr as (x,y):
+            unify2(x,ty2,state)
+            return y
+        with _pm, ty1 >> TVar as (y,):
+            h = newMetaVar(state)
+            t = newMetaVar(state)
+            unify2(ty1, TArr(h,t), state)
+            unify2(h,ty2, state)
+            return t
+        raise TypeError(f"apply nonarrow: ({ty1},{ty2})")
+    with _pm, trm >> Lam as (v, t1):
+        mv = newMetaVar(state)
+        state.context[v] = mv
+        tbody = infer2(t1, state)
+        return TArr(mv, tbody)
+    return _unhandled(trm)
+
+def unify2(ty1p: Typ, ty2p: Typ, state: State) -> None:
+    check_argument_types()
+    ty1 = resolve(ty1p, state)
+    ty2 = resolve(ty2p, state)
+    with _pm, ty1 >> TVar as (v1,):
+        state.store[v1] = ty2
+        return
+    with _pm, ty2 >> TVar as (v2,):
+        state.store[v2] = ty1
+        return
+    with _pm, ty1 >> TArr as (h1,t1), ty2 >> TArr as (h2,t2):
+        unify2(h1,h2,state)
+        unify2(t1,t2,state)
+        return
+    if ty1 != ty2:
+        raise TypeError(f"{ty1} != {ty2}")
+
+# get one type and returns the same type but with all tvar-references inside it
+# chased out
+def resolvep(seen : TList[Typ], ty : Typ, state: State) -> Typ:
+    check_argument_types()
+    with _pm, ty >> TVar as (v,):
+        mres = state.store.get(v)
+        if mres is None:
+            return ty
+        else:
+            resp = mres
+             # occurs check
+            if resp in seen:
+                raise TypeError(f"occurs check: ({resp},{ty})")
+            res = resolvep([resp,*seen], resp, state)
+            # zonking
+            state.store[v] = res
+            return res
+    with _pm, ty >> TArr as (h,t):
+        hp = resolvep(seen,h,state)
+        tp = resolvep(seen,t,state)
+        return TArr(hp,tp)
+    with _pm, ty >> Lam as (v,t):
+        return TLam(v, resolvep(seen,t,state))
+    return ty
+
+def resolve(ty : Typ, state : State) -> Typ:
+    return resolvep([], ty, state)
+
+def runInfer(trm : Term) -> Typ:
+    state = State()
+    return resolve(infer2(trm, state),state)
+
+
+print(runInfer(trm_id))
+print(runInfer(trm_int))
+print(runInfer(trm_id_unit))
+print(runInfer(trm_higher))
+try:
+    print(runInfer(trm_occurs)) # occurs check
+except Exception as e:
+    print("Exception:", e)
