@@ -43,6 +43,9 @@ trm_id_unit = App trm_id Unit
 trm_higher = Lam "x" (App (Var "x") trm_int)
 trm_occurs = Lam "x" (App (Var "x") (Var "x"))
 
+
+-- most naive thing that does not work
+
 unify1 :: Typ -> Typ -> Bool
 unify1 x y = x == y
 
@@ -63,3 +66,5 @@ infer1 c t = case t of
     in TArr tv (infer1 (M.insert v tv c ) t1)
 
 -- ================================================================ --
+
+
