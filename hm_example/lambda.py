@@ -319,11 +319,12 @@ def runInfer(trm : Term) -> Typ:
     return resolve(infer2(trm, state),state)
 
 
-print(runInfer(trm_id))
-print(runInfer(trm_int))
-print(runInfer(trm_id_unit))
-print(runInfer(trm_higher))
+print(trm_id, ":" ,runInfer(trm_id))
+print(trm_int, ":" ,runInfer(trm_int))
+print(trm_id_unit,":" , runInfer(trm_id_unit))
+print(trm_higher, ":" ,runInfer(trm_higher))
 try:
+    print(trm_occurs,":")
     print(runInfer(trm_occurs)) # occurs check
 except Exception as e:
     print("Exception:", e)
