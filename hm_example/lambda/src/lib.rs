@@ -60,7 +60,7 @@ pub fn subst_ty(from: &Type, to: &Type, typ: &Type) -> Type {
         match &**typ {
             TLam(v, ty) => Type::new(TLam(
                 v.clone(), //
-                subst_ty(from, to, &ty.clone()),
+                subst_ty(from, to, ty),
             )),
             TArr(ty1, ty2) => Type::new(TArr(
                 subst_ty(from, to, ty1), //
