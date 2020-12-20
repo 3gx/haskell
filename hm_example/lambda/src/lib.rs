@@ -57,7 +57,7 @@ pub fn subst_ty(from: &Type, to: &Type, typ: &Type) -> Type {
     if from == typ {
         to.clone()
     } else {
-        match &*typ.0 {
+        match &**typ {
             TLam(v, ty) => Type::new(TLam(
                 v.clone(), //
                 subst_ty(from, to, &ty.clone()),
