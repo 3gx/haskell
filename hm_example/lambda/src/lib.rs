@@ -54,20 +54,17 @@ pub enum TypeKind {
 
 pub fn subst_ty(from: &Type, to: &Type, typ: &Type) -> Type {
     use TypeKind::{TArr, TLam};
-    if from == typ {
-        to.clone()
-    } else {
-        match &**typ {
-            TLam(v, ty) => Type::new(TLam(
+    match &**typ {
+        _ if from == typ => to.clone(),
+        TLam(v, ty) => Type::new(TLam(
                 v.clone(), //
                 subst_ty(from, to, ty),
-            )),
-            TArr(ty1, ty2) => Type::new(TArr(
+        )),
+        TArr(ty1, ty2) => Type::new(TArr(
                 subst_ty(from, to, ty1), //
                 subst_ty(from, to, ty2),
-            )),
-            _ => typ.clone(),
-        }
+        )),
+        _ => typ.clone(),
     }
 }
 
