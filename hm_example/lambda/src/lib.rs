@@ -1,45 +1,77 @@
+use std::ops::{Deref, DerefMut};
+
 type Int = i32;
-type DynTerm = Box<Term>;
-#[derive(PartialEq, Debug)]
-pub enum Term {
-    Lam(String, DynTerm),
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct Term(Box<TermKind>);
+
+impl Term {
+    pub fn new(kind: TermKind) -> Term {
+        Term(Box::new(kind))
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub enum TermKind {
+    Lam(String, Term),
     Var(String),
-    App(DynTerm, DynTerm),
+    App(Term, Term),
     KonstInt(Int),
     Unit,
 }
 
-type DynTyp = Box<Typ>;
-#[derive(PartialEq, Debug, Clone)]
-pub enum Typ {
-    TLam(String, DynTyp),
+#[derive(Eq, PartialEq, Debug, Clone)]
+pub struct Type(Box<TypeKind>);
+
+impl Type {
+    pub fn new(kind: TypeKind) -> Type {
+        Type(Box::new(kind))
+    }
+}
+
+impl Deref for Type {
+    type Target = TypeKind;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.0
+    }
+}
+impl DerefMut for Type {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut *self.0
+    }
+}
+
+#[derive(Eq, PartialEq, Debug, Clone)]
+pub enum TypeKind {
+    TLam(String, Type),
     TBVar(String),
     TVar(Int),
-    TArr(DynTyp, DynTyp),
+    TArr(Type, Type),
     TInt,
     TUnit,
 }
 
-fn mk_new<T>(val: T) -> Box<T> {
-    Box::new(val)
-}
-
-pub fn subst_ty(from: &Typ, to: &Typ, typ: &Typ) -> Typ {
-    use Typ::{TArr, TLam};
+pub fn subst_ty(from: &Type, to: &Type, typ: &Type) -> Type {
+    use TypeKind::{TArr, TLam};
     if from == typ {
         to.clone()
     } else {
-        match typ {
-            TLam(v, ty) => TLam(v.clone(), mk_new(subst_ty(from, to, &*ty))),
-            TArr(ty1, ty2) => TArr(
-                mk_new(subst_ty(from, to, &*ty1)),
-                mk_new(subst_ty(from, to, &*ty2)),
-            ),
+        match &*typ.0 {
+            TLam(v, ty) => Type::new(TLam(
+                v.clone(), //
+                subst_ty(from, to, &ty.clone()),
+            )),
+            TArr(ty1, ty2) => Type::new(TArr(
+                subst_ty(from, to, ty1), //
+                subst_ty(from, to, ty2),
+            )),
             _ => typ.clone(),
         }
     }
 }
 
+/*
 use std::collections::HashMap;
 type Ctx = HashMap<String, Typ>;
 
@@ -49,3 +81,4 @@ pub fn prims() -> Ctx {
     prims.insert(String::from("+"), TArr(mk_new(TInt), mk_new(TInt)));
     prims
 }
+*/
