@@ -24,18 +24,28 @@ fn mk_new<T>(val: T) -> Box<T> {
     Box::new(val)
 }
 
-pub fn subst_ty(from: Typ, to: Typ, typ: Typ) -> Typ {
+pub fn subst_ty(from: &Typ, to: &Typ, typ: &Typ) -> Typ {
     use Typ::{TArr, TLam};
     if from == typ {
-        to
+        to.clone()
     } else {
         match typ {
-            TLam(v, ty) => TLam(v, mk_new(subst_ty(from, to, *ty.clone()))),
+            TLam(v, ty) => TLam(v.clone(), mk_new(subst_ty(from, to, &*ty))),
             TArr(ty1, ty2) => TArr(
-                mk_new(subst_ty(from.clone(), to.clone(), *ty1)),
-                mk_new(subst_ty(from.clone(), to.clone(), *ty2)),
+                mk_new(subst_ty(from, to, &*ty1)),
+                mk_new(subst_ty(from, to, &*ty2)),
             ),
-            _ => typ,
+            _ => typ.clone(),
         }
     }
+}
+
+use std::collections::HashMap;
+type Ctx = HashMap<String, Typ>;
+
+pub fn prims() -> Ctx {
+    use Typ::{TArr, TInt};
+    let mut prims = Ctx::new();
+    prims.insert(String::from("+"), TArr(mk_new(TInt), mk_new(TInt)));
+    prims
 }
