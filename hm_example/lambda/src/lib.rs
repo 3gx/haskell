@@ -128,7 +128,7 @@ pub fn TLam(s: &str, ta: Type) -> Type {
     Type::new(TypeKind::TLam(s.to_string(), ta))
 }
 #[allow(non_snake_case)]
-pub fn TBvar(s: &str) -> Type {
+pub fn TBVar(s: &str) -> Type {
     Type::new(TypeKind::TBVar(s.to_string()))
 }
 #[allow(non_snake_case)]
@@ -181,7 +181,7 @@ pub fn prims() -> Ctx {
     [
         ("+".to_string(), TArr(TInt(), TInt())),
         ("print".to_string(), TArr(TInt(), TUnit())),
-        ("id".to_string(), TLam("a", TArr(TBvar("a"), TBvar("a")))),
+        ("id".to_string(), TLam("a", TArr(TBVar("a"), TBVar("a")))),
     ]
     .iter()
     .cloned()
@@ -219,4 +219,58 @@ impl State {
         self.var_count = v + 1;
         TVar(v)
     }
+
+    fn instantiate(&mut self, t: &Type) -> Type {
+        match &**t {
+            TypeKind::TLam(v, ty) => {
+                let mv = self.new_metavar();
+                self.instantiate(&subst_ty(&TBVar(v), &mv, ty))
+            },
+            _ => t.clone()
+        }
+    }
+
+    fn infer2(&mut self, trm: &Term) -> Type {
+        match &**trm {
+            TermKind::KonstInt(_) => TInt(),
+            TermKind::Unit => TUnit(),
+            TermKind::Var(s) => {
+                let ty = self.resolve(&self.context.get(s).unwrap().clone());
+                self.instantiate(&ty)
+            }
+            TermKind::App(t1,t2) => {
+                let ty1 = self.infer2(&t1);
+                let ty2 = self.infer2(&t2);
+                match *ty1.0 {
+                    TypeKind::TArr(x,y) => {
+                        self.unify2(&x,&ty2);
+                        y
+                    }
+                    TypeKind::TVar(_) => {
+                        let h = self.new_metavar();
+                        let t = self.new_metavar();
+                        self.unify2(&ty1, &TArr(h.clone(),t.clone()));
+                        self.unify2(&h, &ty2);
+                        t
+                    }
+                    _ => panic!("Unhandled ty1= {:?}", ty1)
+                }
+            }
+            TermKind::Lam(v,t1) => {
+                let mv = self.new_metavar();
+                self.context.insert(v.to_string(),mv.clone());
+                let tbody = self.infer2(&t1);
+                TArr(mv, tbody)
+            }
+        }
+    }
+
+    fn resolve(&mut self, _t: &Type) -> Type {
+        unimplemented!()
+    }
+
+    fn unify2(&mut self, _t1: &Type, _t2: &Type) {
+        unimplemented!()
+    }
+
 }
