@@ -1,11 +1,18 @@
 use std::ops::{Deref, DerefMut};
+use std::fmt;
 
 type Int = i32;
-
 //-----------------------------------------------------------------------------
+
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Term(Box<TermKind>);
+
+impl fmt::Display for Term {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl Term {
     pub fn new(kind: TermKind) -> Term {
@@ -35,16 +42,29 @@ pub enum TermKind {
     Unit,
 }
 
+impl fmt::Display for TermKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            TermKind::Lam(s, t) => write!(f, "Lam(\"{}\", {})", s, t),
+            TermKind::Var(s) => write!(f, "Var(\"{}\")", s),
+            TermKind::App(ta, tb) => write!(f, "App({},{})", ta, tb),
+            TermKind::KonstInt(i) => write!(f, "KonstInt({})", i),
+            TermKind::Unit => write!(f, "Unit"),
+        }
+    }
+}
+
+
 #[allow(non_snake_case)]
-pub fn Lam(s: &str, t: Term) -> Term {
+pub fn Lam(s:&str, t: Term) -> Term {
     Term::new(TermKind::Lam(s.to_string(), t))
 }
 #[allow(non_snake_case)]
-pub fn Var(s: &str) -> Term {
+pub fn Var(s:&str) -> Term {
     Term::new(TermKind::Var(s.to_string()))
 }
 #[allow(non_snake_case)]
-pub fn App(ta: Term, tb: Term) -> Term {
+pub fn App(ta: Term, tb : Term) -> Term {
     Term::new(TermKind::App(ta, tb))
 }
 #[allow(non_snake_case)]
@@ -58,11 +78,17 @@ pub fn Unit() -> Term {
 
 //-----------------------------------------------------------------------------
 
+
 #[derive(Eq, PartialEq, Debug, Clone)]
 pub struct Type(Box<TypeKind>);
 impl Type {
     pub fn new(kind: TypeKind) -> Type {
         Type(Box::new(kind))
+    }
+}
+impl fmt::Display for Type {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -88,8 +114,20 @@ pub enum TypeKind {
     TInt,
     TUnit,
 }
+impl fmt::Display for TypeKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            TypeKind::TLam(s, t) => write!(f, "TLam(\"{}\", {})", s, t),
+            TypeKind::TBVar(s) => write!(f, "TBVar(\"{}\")", s),
+            TypeKind::TVar(i) => write!(f, "Var({})", i),
+            TypeKind::TArr(ta, tb) => write!(f, "TArr({},{})", ta, tb),
+            TypeKind::TInt => write!(f, "TInt"),
+            TypeKind::TUnit => write!(f, "TUnit"),
+        }
+    }
+}
 #[allow(non_snake_case)]
-pub fn TLam(s: &str, ta: Type) -> Type {
+pub fn TLam(s: &str, ta : Type) -> Type {
     Type::new(TypeKind::TLam(s.to_string(), ta))
 }
 #[allow(non_snake_case)]
@@ -101,7 +139,7 @@ pub fn Tvar(i: Int) -> Type {
     Type::new(TypeKind::TVar(i))
 }
 #[allow(non_snake_case)]
-pub fn TArr(ta: Type, tb: Type) -> Type {
+pub fn TArr(ta : Type, tb : Type) -> Type {
     Type::new(TypeKind::TArr(ta, tb))
 }
 #[allow(non_snake_case)]
@@ -143,14 +181,25 @@ pub fn subst_ty(from: &Type, to: &Type, typ: &Type) -> Type {
     }
 }
 
+
+
 use std::collections::HashMap;
 type Ctx = HashMap<String, Type>;
 
 pub fn prims() -> Ctx {
     [
-        ("+".to_string(), TArr(TInt(), TInt())),
-        ("print".to_string(), TArr(TInt(), TUnit())),
-        ("id".to_string(), TLam("a", TArr(TBvar("a"), TBvar("a")))),
+        (
+            "+".to_string(),
+            TArr(TInt(), TInt()),
+        ),
+        (
+            "print".to_string(),
+            TArr(TInt(), TUnit()),
+        ),
+        (
+            "id".to_string(),
+            TLam("a", TArr(TBvar("a"), TBvar("a"))),
+        ),
     ]
     .iter()
     .cloned()
