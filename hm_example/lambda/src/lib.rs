@@ -2,12 +2,27 @@ use std::ops::{Deref, DerefMut};
 
 type Int = i32;
 
+//-----------------------------------------------------------------------------
+
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Term(Box<TermKind>);
 
 impl Term {
     pub fn new(kind: TermKind) -> Term {
         Term(Box::new(kind))
+    }
+}
+
+impl Deref for Term {
+    type Target = TermKind;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.0
+    }
+}
+impl DerefMut for Term {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut *self.0
     }
 }
 
@@ -21,17 +36,30 @@ pub enum TermKind {
 }
 
 #[allow(non_snake_case)]
-pub fn Lam(s:&str, t: Term) -> Term {
+pub fn Lam(s: &str, t: Term) -> Term {
     Term::new(TermKind::Lam(s.to_string(), t))
 }
 #[allow(non_snake_case)]
-pub fn Var(s:&str) -> Term {
+pub fn Var(s: &str) -> Term {
     Term::new(TermKind::Var(s.to_string()))
 }
+#[allow(non_snake_case)]
+pub fn App(ta: Term, tb: Term) -> Term {
+    Term::new(TermKind::App(ta, tb))
+}
+#[allow(non_snake_case)]
+pub fn KonstInt(i: Int) -> Term {
+    Term::new(TermKind::KonstInt(i))
+}
+#[allow(non_snake_case)]
+pub fn Unit() -> Term {
+    Term::new(TermKind::Unit)
+}
+
+//-----------------------------------------------------------------------------
 
 #[derive(Eq, PartialEq, Debug, Clone)]
 pub struct Type(Box<TypeKind>);
-
 impl Type {
     pub fn new(kind: TypeKind) -> Type {
         Type(Box::new(kind))
@@ -60,6 +88,32 @@ pub enum TypeKind {
     TInt,
     TUnit,
 }
+#[allow(non_snake_case)]
+pub fn TLam(s: &str, ta: Type) -> Type {
+    Type::new(TypeKind::TLam(s.to_string(), ta))
+}
+#[allow(non_snake_case)]
+pub fn TBvar(s: &str) -> Type {
+    Type::new(TypeKind::TBVar(s.to_string()))
+}
+#[allow(non_snake_case)]
+pub fn Tvar(i: Int) -> Type {
+    Type::new(TypeKind::TVar(i))
+}
+#[allow(non_snake_case)]
+pub fn TArr(ta: Type, tb: Type) -> Type {
+    Type::new(TypeKind::TArr(ta, tb))
+}
+#[allow(non_snake_case)]
+pub fn TInt() -> Type {
+    Type::new(TypeKind::TInt)
+}
+#[allow(non_snake_case)]
+pub fn TUnit() -> Type {
+    Type::new(TypeKind::TUnit)
+}
+
+//-----------------------------------------------------------------------------
 
 /*
 from: https://stackoverflow.com/questions/28392008/more-concise-hashmap-initialization
@@ -89,45 +143,14 @@ pub fn subst_ty(from: &Type, to: &Type, typ: &Type) -> Type {
     }
 }
 
-
-#[allow(non_snake_case)]
-pub fn TArr(ta : Type, tb : Type) -> Type {
-    Type::new(TypeKind::TArr(ta, tb))
-}
-#[allow(non_snake_case)]
-pub fn TInt() -> Type {
-    Type::new(TypeKind::TInt)
-}
-#[allow(non_snake_case)]
-pub fn TLam(s: &str, ta : Type) -> Type {
-    Type::new(TypeKind::TLam(s.to_string(), ta))
-}
-#[allow(non_snake_case)]
-pub fn TBvar(s: &str) -> Type {
-    Type::new(TypeKind::TBVar(s.to_string()))
-}
-#[allow(non_snake_case)]
-pub fn TUnit() -> Type {
-    Type::new(TypeKind::TUnit)
-}
-
 use std::collections::HashMap;
 type Ctx = HashMap<String, Type>;
 
 pub fn prims() -> Ctx {
     [
-        (
-            "+".to_string(),
-            TArr(TInt(), TInt()),
-        ),
-        (
-            "print".to_string(),
-            TArr(TInt(), TUnit()),
-        ),
-        (
-            "id".to_string(),
-            TLam("a", TArr(TBvar("a"), TBvar("a"))),
-        ),
+        ("+".to_string(), TArr(TInt(), TInt())),
+        ("print".to_string(), TArr(TInt(), TUnit())),
+        ("id".to_string(), TLam("a", TArr(TBvar("a"), TBvar("a")))),
     ]
     .iter()
     .cloned()
