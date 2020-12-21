@@ -1,9 +1,8 @@
-use std::ops::{Deref, DerefMut};
 use std::fmt;
+use std::ops::{Deref, DerefMut};
 
 type Int = i32;
 //-----------------------------------------------------------------------------
-
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Term(Box<TermKind>);
@@ -54,17 +53,16 @@ impl fmt::Display for TermKind {
     }
 }
 
-
 #[allow(non_snake_case)]
-pub fn Lam(s:&str, t: Term) -> Term {
+pub fn Lam(s: &str, t: Term) -> Term {
     Term::new(TermKind::Lam(s.to_string(), t))
 }
 #[allow(non_snake_case)]
-pub fn Var(s:&str) -> Term {
+pub fn Var(s: &str) -> Term {
     Term::new(TermKind::Var(s.to_string()))
 }
 #[allow(non_snake_case)]
-pub fn App(ta: Term, tb : Term) -> Term {
+pub fn App(ta: Term, tb: Term) -> Term {
     Term::new(TermKind::App(ta, tb))
 }
 #[allow(non_snake_case)]
@@ -77,7 +75,6 @@ pub fn Unit() -> Term {
 }
 
 //-----------------------------------------------------------------------------
-
 
 #[derive(Eq, PartialEq, Debug, Clone)]
 pub struct Type(Box<TypeKind>);
@@ -127,7 +124,7 @@ impl fmt::Display for TypeKind {
     }
 }
 #[allow(non_snake_case)]
-pub fn TLam(s: &str, ta : Type) -> Type {
+pub fn TLam(s: &str, ta: Type) -> Type {
     Type::new(TypeKind::TLam(s.to_string(), ta))
 }
 #[allow(non_snake_case)]
@@ -139,7 +136,7 @@ pub fn Tvar(i: Int) -> Type {
     Type::new(TypeKind::TVar(i))
 }
 #[allow(non_snake_case)]
-pub fn TArr(ta : Type, tb : Type) -> Type {
+pub fn TArr(ta: Type, tb: Type) -> Type {
     Type::new(TypeKind::TArr(ta, tb))
 }
 #[allow(non_snake_case)]
@@ -166,40 +163,25 @@ macro_rules! hashmap {
 */
 
 pub fn subst_ty(from: &Type, to: &Type, typ: &Type) -> Type {
-    use TypeKind::{TArr, TLam};
     match &**typ {
         _ if from == typ => to.clone(),
-        TLam(v, ty) => Type::new(TLam(
-            v.clone(), //
-            subst_ty(from, to, ty),
-        )),
-        TArr(ty1, ty2) => Type::new(TArr(
+        TypeKind::TLam(v, ty) => TLam(v, subst_ty(from, to, ty)),
+        TypeKind::TArr(ty1, ty2) => TArr(
             subst_ty(from, to, ty1), //
             subst_ty(from, to, ty2),
-        )),
+        ),
         _ => typ.clone(),
     }
 }
-
-
 
 use std::collections::HashMap;
 type Ctx = HashMap<String, Type>;
 
 pub fn prims() -> Ctx {
     [
-        (
-            "+".to_string(),
-            TArr(TInt(), TInt()),
-        ),
-        (
-            "print".to_string(),
-            TArr(TInt(), TUnit()),
-        ),
-        (
-            "id".to_string(),
-            TLam("a", TArr(TBvar("a"), TBvar("a"))),
-        ),
+        ("+".to_string(), TArr(TInt(), TInt())),
+        ("print".to_string(), TArr(TInt(), TUnit())),
+        ("id".to_string(), TLam("a", TArr(TBvar("a"), TBvar("a")))),
     ]
     .iter()
     .cloned()
