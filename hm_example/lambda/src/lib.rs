@@ -132,7 +132,7 @@ pub fn TBvar(s: &str) -> Type {
     Type::new(TypeKind::TBVar(s.to_string()))
 }
 #[allow(non_snake_case)]
-pub fn Tvar(i: Int) -> Type {
+pub fn TVar(i: Int) -> Type {
     Type::new(TypeKind::TVar(i))
 }
 #[allow(non_snake_case)]
@@ -202,4 +202,21 @@ pub fn term_higher() -> Term {
 }
 pub fn term_occurs() -> Term {
     Lam("x", App(Var("x"), Var("x")))
+}
+
+// ----------------------------------------------------------------------------
+
+#[derive(Debug)]
+struct State {
+    store : HashMap<Int, Type>,
+    context : HashMap<String, Type>,
+    var_count : Int,
+}
+
+impl State {
+    fn new_metavar(&mut self) -> Type {
+        let v = self.var_count;
+        self.var_count = v + 1;
+        TVar(v)
+    }
 }
