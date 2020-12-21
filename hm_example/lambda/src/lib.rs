@@ -52,30 +52,60 @@ pub enum TypeKind {
     TUnit,
 }
 
+/*
+from: https://stackoverflow.com/questions/28392008/more-concise-hashmap-initialization
+macro_rules! hashmap {
+    ($( $key: expr => $val: expr ),*) => {{
+         let mut map = ::std::collections::HashMap::new();
+         $( map.insert($key, $val); )*
+         map
+    }}
+}
+// let counts = hashmap!['A' => 0, 'C' => 0, 'G' => 0, 'T' => 0];.
+*/
+
 pub fn subst_ty(from: &Type, to: &Type, typ: &Type) -> Type {
     use TypeKind::{TArr, TLam};
     match &**typ {
         _ if from == typ => to.clone(),
         TLam(v, ty) => Type::new(TLam(
-                v.clone(), //
-                subst_ty(from, to, ty),
+            v.clone(), //
+            subst_ty(from, to, ty),
         )),
         TArr(ty1, ty2) => Type::new(TArr(
-                subst_ty(from, to, ty1), //
-                subst_ty(from, to, ty2),
+            subst_ty(from, to, ty1), //
+            subst_ty(from, to, ty2),
         )),
         _ => typ.clone(),
     }
 }
 
-/*
 use std::collections::HashMap;
-type Ctx = HashMap<String, Typ>;
+type Ctx = HashMap<String, Type>;
 
 pub fn prims() -> Ctx {
-    use Typ::{TArr, TInt};
-    let mut prims = Ctx::new();
-    prims.insert(String::from("+"), TArr(mk_new(TInt), mk_new(TInt)));
-    prims
+    use TypeKind::{TArr, TBVar, TInt, TLam, TUnit};
+    [
+        (
+            "+".to_string(),
+            Type::new(TArr(Type::new(TInt), Type::new(TInt))),
+        ),
+        (
+            "print".to_string(),
+            Type::new(TArr(Type::new(TInt), Type::new(TUnit))),
+        ),
+        (
+            "id".to_string(),
+            Type::new(TLam(
+                "a".to_string(),
+                Type::new(TArr(
+                    Type::new(TBVar("a".to_string())),
+                    Type::new(TBVar("a".to_string())),
+                )),
+            )),
+        ),
+    ]
+    .iter()
+    .cloned()
+    .collect()
 }
-*/
