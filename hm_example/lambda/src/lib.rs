@@ -46,7 +46,7 @@ impl fmt::Display for TermKind {
         match self {
             TermKind::Lam(s, t) => write!(f, "Lam(\"{}\", {})", s, t),
             TermKind::Var(s) => write!(f, "Var(\"{}\")", s),
-            TermKind::App(ta, tb) => write!(f, "App({},{})", ta, tb),
+            TermKind::App(ta, tb) => write!(f, "App({}, {})", ta, tb),
             TermKind::KonstInt(i) => write!(f, "KonstInt({})", i),
             TermKind::Unit => write!(f, "Unit"),
         }
@@ -117,7 +117,7 @@ impl fmt::Display for TypeKind {
             TypeKind::TLam(s, t) => write!(f, "TLam(\"{}\", {})", s, t),
             TypeKind::TBVar(s) => write!(f, "TBVar(\"{}\")", s),
             TypeKind::TVar(i) => write!(f, "Var({})", i),
-            TypeKind::TArr(ta, tb) => write!(f, "TArr({},{})", ta, tb),
+            TypeKind::TArr(ta, tb) => write!(f, "TArr({}, {})", ta, tb),
             TypeKind::TInt => write!(f, "TInt"),
             TypeKind::TUnit => write!(f, "TUnit"),
         }
@@ -190,4 +190,16 @@ pub fn prims() -> Ctx {
 
 pub fn term_id() -> Term {
     Lam("x", Var("x"))
+}
+pub fn term_int() -> Term {
+    KonstInt(1)
+}
+pub fn term_id_unit() -> Term {
+    App(term_id(), Unit())
+}
+pub fn term_higher() -> Term {
+    Lam("x", App(Var("x"), term_int()))
+}
+pub fn term_occurs() -> Term {
+    Lam("x", App(Var("x"), Var("x")))
 }
