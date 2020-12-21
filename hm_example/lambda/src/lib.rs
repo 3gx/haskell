@@ -80,29 +80,44 @@ pub fn subst_ty(from: &Type, to: &Type, typ: &Type) -> Type {
     }
 }
 
+
+#[allow(non_snake_case)]
+pub fn TArr(ta : Type, tb : Type) -> Type {
+    Type::new(TypeKind::TArr(ta, tb))
+}
+#[allow(non_snake_case)]
+pub fn TInt() -> Type {
+    Type::new(TypeKind::TInt)
+}
+#[allow(non_snake_case)]
+pub fn TLam(s: &str, ta : Type) -> Type {
+    Type::new(TypeKind::TLam(s.to_string(), ta))
+}
+#[allow(non_snake_case)]
+pub fn TBvar(s: &str) -> Type {
+    Type::new(TypeKind::TBVar(s.to_string()))
+}
+#[allow(non_snake_case)]
+pub fn TUnit() -> Type {
+    Type::new(TypeKind::TUnit)
+}
+
 use std::collections::HashMap;
 type Ctx = HashMap<String, Type>;
 
 pub fn prims() -> Ctx {
-    use TypeKind::{TArr, TBVar, TInt, TLam, TUnit};
     [
         (
             "+".to_string(),
-            Type::new(TArr(Type::new(TInt), Type::new(TInt))),
+            TArr(TInt(), TInt()),
         ),
         (
             "print".to_string(),
-            Type::new(TArr(Type::new(TInt), Type::new(TUnit))),
+            TArr(TInt(), TUnit()),
         ),
         (
             "id".to_string(),
-            Type::new(TLam(
-                "a".to_string(),
-                Type::new(TArr(
-                    Type::new(TBVar("a".to_string())),
-                    Type::new(TBVar("a".to_string())),
-                )),
-            )),
+            TLam("a", TArr(TBvar("a"), TBvar("a"))),
         ),
     ]
     .iter()
