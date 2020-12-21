@@ -20,6 +20,15 @@ pub enum TermKind {
     Unit,
 }
 
+#[allow(non_snake_case)]
+pub fn Lam(s:&str, t: Term) -> Term {
+    Term::new(TermKind::Lam(s.to_string(), t))
+}
+#[allow(non_snake_case)]
+pub fn Var(s:&str) -> Term {
+    Term::new(TermKind::Var(s.to_string()))
+}
+
 #[derive(Eq, PartialEq, Debug, Clone)]
 pub struct Type(Box<TypeKind>);
 
@@ -123,4 +132,8 @@ pub fn prims() -> Ctx {
     .iter()
     .cloned()
     .collect()
+}
+
+pub fn term_id() -> Term {
+    Lam("x", Var("x"))
 }
