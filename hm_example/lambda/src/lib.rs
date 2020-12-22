@@ -16,6 +16,7 @@ impl fmt::Display for Term {
 }
 
 impl Term {
+    #![allow(non_snake_case)]
     fn kind(&self) -> &TermKind {
         return &*self.kind;
     }
@@ -24,23 +25,18 @@ impl Term {
             kind: Box::new(kind),
         }
     }
-    #[allow(non_snake_case)]
     pub fn Lam(s: &str, t: Term) -> Term {
         Term::new(TermKind::Lam(s.to_string(), t))
     }
-    #[allow(non_snake_case)]
     pub fn Var(s: &str) -> Term {
         Term::new(TermKind::Var(s.to_string()))
     }
-    #[allow(non_snake_case)]
     pub fn App(ta: Term, tb: Term) -> Term {
         Term::new(TermKind::App(ta, tb))
     }
-    #[allow(non_snake_case)]
     pub fn KonstInt(i: Int) -> Term {
         Term::new(TermKind::KonstInt(i))
     }
-    #[allow(non_snake_case)]
     pub fn Unit() -> Term {
         Term::new(TermKind::Unit)
     }
