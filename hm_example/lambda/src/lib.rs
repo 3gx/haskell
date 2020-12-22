@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt;
 
 type Int = i32;
@@ -155,41 +156,10 @@ pub fn subst_ty(from: &Type, to: &Type, typ: &Type) -> Type {
     }
 }
 
-use std::collections::HashMap;
-//use std::collections::HashSet;
-type Ctx = HashMap<String, Type>;
-
-pub fn prims() -> Ctx {
-    [
-        ("+".to_string(), TArr(TInt(), TInt())),
-        ("print".to_string(), TArr(TInt(), TUnit())),
-        ("id".to_string(), TLam("a", TArr(TBVar("a"), TBVar("a")))),
-    ]
-    .iter()
-    .cloned()
-    .collect()
-}
-
-pub fn term_id() -> Term {
-    Lam("x", Var("x"))
-}
-pub fn term_int() -> Term {
-    KonstInt(1)
-}
-pub fn term_id_unit() -> Term {
-    App(term_id(), Unit())
-}
-pub fn term_higher() -> Term {
-    Lam("x", App(Var("x"), term_int()))
-}
-pub fn term_occurs() -> Term {
-    Lam("x", App(Var("x"), Var("x")))
-}
-
 // ----------------------------------------------------------------------------
 
 #[derive(Debug)]
-pub struct State {
+struct State {
     store: HashMap<Int, Type>,
     context: HashMap<String, Type>,
     var_count: Int,
@@ -203,13 +173,13 @@ impl State {
             var_count: 0,
         }
     }
-    pub fn new_metavar(&mut self) -> Type {
+    fn new_metavar(&mut self) -> Type {
         let v = self.var_count;
         self.var_count = v + 1;
         TVar(v)
     }
 
-    pub fn instantiate(&mut self, t: &Type) -> Type {
+    fn instantiate(&mut self, t: &Type) -> Type {
         match &*t.kind {
             TypeKind::TLam(v, ty) => {
                 let mv = self.new_metavar();
@@ -219,7 +189,7 @@ impl State {
         }
     }
 
-    pub fn infer2(&mut self, trm: &Term) -> Type {
+    fn infer2(&mut self, trm: &Term) -> Type {
         match &*trm.kind {
             TermKind::KonstInt(_) => TInt(),
             TermKind::Unit => TUnit(),
@@ -282,11 +252,11 @@ impl State {
             _ => ty.clone(),
         }
     }
-    pub fn resolve(&mut self, ty: &Type) -> Type {
+    fn resolve(&mut self, ty: &Type) -> Type {
         self.resolve_impl(Vec::new(), ty)
     }
 
-    pub fn unify2(&mut self, ty1p: &Type, ty2p: &Type) {
+    fn unify2(&mut self, ty1p: &Type, ty2p: &Type) {
         let ty1 = self.resolve(ty1p);
         let ty2 = self.resolve(ty2p);
         match (&*ty1.kind, &*ty2.kind) {
@@ -304,10 +274,39 @@ impl State {
             _ => panic!("unable to unify ({:?},{:?})", ty1, ty2),
         }
     }
+}
 
-    pub fn run_infer(term: &Term) -> Type {
-        let mut state = State::new();
-        let infer = state.infer2(term);
-        state.resolve(&infer)
-    }
+type Ctx = HashMap<String, Type>;
+
+pub fn prims() -> Ctx {
+    [
+        ("+".to_string(), TArr(TInt(), TInt())),
+        ("print".to_string(), TArr(TInt(), TUnit())),
+        ("id".to_string(), TLam("a", TArr(TBVar("a"), TBVar("a")))),
+    ]
+    .iter()
+    .cloned()
+    .collect()
+}
+
+pub fn term_id() -> Term {
+    Lam("x", Var("x"))
+}
+pub fn term_int() -> Term {
+    KonstInt(1)
+}
+pub fn term_id_unit() -> Term {
+    App(term_id(), Unit())
+}
+pub fn term_higher() -> Term {
+    Lam("x", App(Var("x"), term_int()))
+}
+pub fn term_occurs() -> Term {
+    Lam("x", App(Var("x"), Var("x")))
+}
+
+pub fn run_infer(term: &Term) -> Type {
+    let mut state = State::new();
+    let infer = state.infer2(term);
+    state.resolve(&infer)
 }
