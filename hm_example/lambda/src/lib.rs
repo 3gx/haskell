@@ -4,7 +4,9 @@ type Int = i32;
 //-----------------------------------------------------------------------------
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Term{kind : Box<TermKind>}
+pub struct Term {
+    kind: Box<TermKind>,
+}
 
 impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -14,7 +16,9 @@ impl fmt::Display for Term {
 
 impl Term {
     pub fn new(kind: TermKind) -> Term {
-        Term { kind : Box::new(kind) }
+        Term {
+            kind: Box::new(kind),
+        }
     }
 }
 
@@ -63,10 +67,14 @@ pub fn Unit() -> Term {
 //-----------------------------------------------------------------------------
 
 #[derive(Eq, PartialEq, Debug, Clone)]
-pub struct Type { kind : Box<TypeKind> }
+pub struct Type {
+    kind: Box<TypeKind>,
+}
 impl Type {
     pub fn new(kind: TypeKind) -> Type {
-        Type { kind : Box::new(kind) }
+        Type {
+            kind: Box::new(kind),
+        }
     }
 }
 impl fmt::Display for Type {
