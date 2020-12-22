@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use std::fmt;
 
-pub mod lam1;
-
 type Int = i32;
 //-----------------------------------------------------------------------------
 
