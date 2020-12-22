@@ -24,6 +24,26 @@ impl Term {
             kind: Box::new(kind),
         }
     }
+    #[allow(non_snake_case)]
+    pub fn Lam(s: &str, t: Term) -> Term {
+        Term::new(TermKind::Lam(s.to_string(), t))
+    }
+    #[allow(non_snake_case)]
+    pub fn Var(s: &str) -> Term {
+        Term::new(TermKind::Var(s.to_string()))
+    }
+    #[allow(non_snake_case)]
+    pub fn App(ta: Term, tb: Term) -> Term {
+        Term::new(TermKind::App(ta, tb))
+    }
+    #[allow(non_snake_case)]
+    pub fn KonstInt(i: Int) -> Term {
+        Term::new(TermKind::KonstInt(i))
+    }
+    #[allow(non_snake_case)]
+    pub fn Unit() -> Term {
+        Term::new(TermKind::Unit)
+    }
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -47,27 +67,6 @@ impl fmt::Display for TermKind {
     }
 }
 
-#[allow(non_snake_case)]
-pub fn Lam(s: &str, t: Term) -> Term {
-    Term::new(TermKind::Lam(s.to_string(), t))
-}
-#[allow(non_snake_case)]
-pub fn Var(s: &str) -> Term {
-    Term::new(TermKind::Var(s.to_string()))
-}
-#[allow(non_snake_case)]
-pub fn App(ta: Term, tb: Term) -> Term {
-    Term::new(TermKind::App(ta, tb))
-}
-#[allow(non_snake_case)]
-pub fn KonstInt(i: Int) -> Term {
-    Term::new(TermKind::KonstInt(i))
-}
-#[allow(non_snake_case)]
-pub fn Unit() -> Term {
-    Term::new(TermKind::Unit)
-}
-
 //-----------------------------------------------------------------------------
 
 #[derive(Eq, PartialEq, Debug, Clone)]
@@ -82,6 +81,30 @@ impl Type {
         Type {
             kind: Box::new(kind),
         }
+    }
+    #[allow(non_snake_case)]
+    pub fn Lam(s: &str, ta: Type) -> Type {
+        Type::new(TypeKind::TLam(s.to_string(), ta))
+    }
+    #[allow(non_snake_case)]
+    pub fn BVar(s: &str) -> Type {
+        Type::new(TypeKind::TBVar(s.to_string()))
+    }
+    #[allow(non_snake_case)]
+    pub fn Var(i: Int) -> Type {
+        Type::new(TypeKind::TVar(i))
+    }
+    #[allow(non_snake_case)]
+    pub fn Arr(ta: Type, tb: Type) -> Type {
+        Type::new(TypeKind::TArr(ta, tb))
+    }
+    #[allow(non_snake_case)]
+    pub fn Int() -> Type {
+        Type::new(TypeKind::TInt)
+    }
+    #[allow(non_snake_case)]
+    pub fn Unit() -> Type {
+        Type::new(TypeKind::TUnit)
     }
 }
 impl fmt::Display for Type {
@@ -111,30 +134,6 @@ impl fmt::Display for TypeKind {
         }
     }
 }
-#[allow(non_snake_case)]
-pub fn TLam(s: &str, ta: Type) -> Type {
-    Type::new(TypeKind::TLam(s.to_string(), ta))
-}
-#[allow(non_snake_case)]
-pub fn TBVar(s: &str) -> Type {
-    Type::new(TypeKind::TBVar(s.to_string()))
-}
-#[allow(non_snake_case)]
-pub fn TVar(i: Int) -> Type {
-    Type::new(TypeKind::TVar(i))
-}
-#[allow(non_snake_case)]
-pub fn TArr(ta: Type, tb: Type) -> Type {
-    Type::new(TypeKind::TArr(ta, tb))
-}
-#[allow(non_snake_case)]
-pub fn TInt() -> Type {
-    Type::new(TypeKind::TInt)
-}
-#[allow(non_snake_case)]
-pub fn TUnit() -> Type {
-    Type::new(TypeKind::TUnit)
-}
 
 //-----------------------------------------------------------------------------
 
@@ -153,8 +152,8 @@ macro_rules! hashmap {
 pub fn subst_ty(from: &Type, to: &Type, typ: &Type) -> Type {
     match typ.kind() {
         _ if from == typ => to.clone(),
-        TypeKind::TLam(v, ty) => TLam(v, subst_ty(from, to, ty)),
-        TypeKind::TArr(ty1, ty2) => TArr(
+        TypeKind::TLam(v, ty) => Type::Lam(v, subst_ty(from, to, ty)),
+        TypeKind::TArr(ty1, ty2) => Type::Arr(
             subst_ty(from, to, ty1), //
             subst_ty(from, to, ty2),
         ),
@@ -182,14 +181,14 @@ impl State {
     fn new_metavar(&mut self) -> Type {
         let v = self.var_count;
         self.var_count = v + 1;
-        TVar(v)
+        Type::Var(v)
     }
 
     fn instantiate(&mut self, t: &Type) -> Type {
         match t.kind() {
             TypeKind::TLam(v, ty) => {
                 let mv = self.new_metavar();
-                self.instantiate(&subst_ty(&TBVar(v), &mv, ty))
+                self.instantiate(&subst_ty(&Type::BVar(v), &mv, ty))
             }
             _ => t.clone(),
         }
@@ -197,8 +196,8 @@ impl State {
 
     fn infer2(&mut self, trm: &Term) -> Type {
         match trm.kind() {
-            TermKind::KonstInt(_) => TInt(),
-            TermKind::Unit => TUnit(),
+            TermKind::KonstInt(_) => Type::Int(),
+            TermKind::Unit => Type::Unit(),
             TermKind::Var(s) => {
                 let ty = self.resolve(&self.context.get(s).unwrap().clone());
                 self.instantiate(&ty)
@@ -214,7 +213,7 @@ impl State {
                     TypeKind::TVar(_) => {
                         let h = self.new_metavar();
                         let t = self.new_metavar();
-                        self.unify2(&ty1, &TArr(h.clone(), t.clone()));
+                        self.unify2(&ty1, &Type::Arr(h.clone(), t.clone()));
                         self.unify2(&h, &ty2);
                         t
                     }
@@ -225,7 +224,7 @@ impl State {
                 let mv = self.new_metavar();
                 self.context.insert(v.to_string(), mv.clone());
                 let tbody = self.infer2(&t1);
-                TArr(mv, tbody)
+                Type::Arr(mv, tbody)
             }
         }
     }
@@ -252,9 +251,9 @@ impl State {
             TypeKind::TArr(h, t) => {
                 let hp = self.resolve_impl(seen.clone(), &h);
                 let tp = self.resolve_impl(seen, &t);
-                TArr(hp, tp)
+                Type::Arr(hp, tp)
             }
-            TypeKind::TLam(v, t) => TLam(&v, self.resolve_impl(seen, &t)),
+            TypeKind::TLam(v, t) => Type::Lam(&v, self.resolve_impl(seen, &t)),
             _ => ty.clone(),
         }
     }
@@ -286,9 +285,12 @@ type Ctx = HashMap<String, Type>;
 
 pub fn prims() -> Ctx {
     [
-        ("+".to_string(), TArr(TInt(), TInt())),
-        ("print".to_string(), TArr(TInt(), TUnit())),
-        ("id".to_string(), TLam("a", TArr(TBVar("a"), TBVar("a")))),
+        ("+".to_string(), Type::Arr(Type::Int(), Type::Int())),
+        ("print".to_string(), Type::Arr(Type::Int(), Type::Unit())),
+        (
+            "id".to_string(),
+            Type::Lam("a", Type::Arr(Type::BVar("a"), Type::BVar("a"))),
+        ),
     ]
     .iter()
     .cloned()
@@ -296,19 +298,19 @@ pub fn prims() -> Ctx {
 }
 
 pub fn term_id() -> Term {
-    Lam("x", Var("x"))
+    Term::Lam("x", Term::Var("x"))
 }
 pub fn term_int() -> Term {
-    KonstInt(1)
+    Term::KonstInt(1)
 }
 pub fn term_id_unit() -> Term {
-    App(term_id(), Unit())
+    Term::App(term_id(), Term::Unit())
 }
 pub fn term_higher() -> Term {
-    Lam("x", App(Var("x"), term_int()))
+    Term::Lam("x", Term::App(Term::Var("x"), term_int()))
 }
 pub fn term_occurs() -> Term {
-    Lam("x", App(Var("x"), Var("x")))
+    Term::Lam("x", Term::App(Term::Var("x"), Term::Var("x")))
 }
 
 pub fn run_infer(term: &Term) -> Type {
