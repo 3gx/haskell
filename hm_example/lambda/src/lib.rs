@@ -280,10 +280,9 @@ impl State {
                     None => ty.clone(),
                     Some(resp) => {
                         // occurs check
-                        match seen.contains(&resp) {
-                            true => panic!("occurs check: ({:?},{:?})", resp, ty),
-                            false => (),
-                        };
+                        if seen.contains(&resp) {
+                            panic!("occurs check: ({:?},{:?})", resp, ty)
+                        }
                         seen.push(resp.clone());
                         let resp = &resp.clone();
                         let res = self.resolve_impl(seen, resp);
