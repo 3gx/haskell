@@ -1,34 +1,20 @@
 use std::fmt;
-use std::ops::{Deref, DerefMut};
 
 type Int = i32;
 //-----------------------------------------------------------------------------
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Term(Box<TermKind>);
+pub struct Term{kind : Box<TermKind>}
 
 impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{}", self.kind)
     }
 }
 
 impl Term {
     pub fn new(kind: TermKind) -> Term {
-        Term(Box::new(kind))
-    }
-}
-
-impl Deref for Term {
-    type Target = TermKind;
-
-    fn deref(&self) -> &Self::Target {
-        &*self.0
-    }
-}
-impl DerefMut for Term {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut *self.0
+        Term { kind : Box::new(kind) }
     }
 }
 
@@ -77,28 +63,15 @@ pub fn Unit() -> Term {
 //-----------------------------------------------------------------------------
 
 #[derive(Eq, PartialEq, Debug, Clone)]
-pub struct Type(Box<TypeKind>);
+pub struct Type { kind : Box<TypeKind> }
 impl Type {
     pub fn new(kind: TypeKind) -> Type {
-        Type(Box::new(kind))
+        Type { kind : Box::new(kind) }
     }
 }
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl Deref for Type {
-    type Target = TypeKind;
-
-    fn deref(&self) -> &Self::Target {
-        &*self.0
-    }
-}
-impl DerefMut for Type {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut *self.0
+        write!(f, "{}", self.kind)
     }
 }
 
@@ -163,7 +136,7 @@ macro_rules! hashmap {
 */
 
 pub fn subst_ty(from: &Type, to: &Type, typ: &Type) -> Type {
-    match &**typ {
+    match &*typ.kind {
         _ if from == typ => to.clone(),
         TypeKind::TLam(v, ty) => TLam(v, subst_ty(from, to, ty)),
         TypeKind::TArr(ty1, ty2) => TArr(
@@ -229,7 +202,7 @@ impl State {
     }
 
     pub fn instantiate(&mut self, t: &Type) -> Type {
-        match &**t {
+        match &*t.kind {
             TypeKind::TLam(v, ty) => {
                 let mv = self.new_metavar();
                 self.instantiate(&subst_ty(&TBVar(v), &mv, ty))
@@ -239,7 +212,7 @@ impl State {
     }
 
     pub fn infer2(&mut self, trm: &Term) -> Type {
-        match &**trm {
+        match &*trm.kind {
             TermKind::KonstInt(_) => TInt(),
             TermKind::Unit => TUnit(),
             TermKind::Var(s) => {
@@ -249,7 +222,7 @@ impl State {
             TermKind::App(t1, t2) => {
                 let ty1 = self.infer2(&t1);
                 let ty2 = self.infer2(&t2);
-                match *ty1.0 {
+                match *ty1.kind {
                     TypeKind::TArr(x, y) => {
                         self.unify2(&x, &ty2);
                         y
@@ -274,7 +247,7 @@ impl State {
     }
 
     fn resolve_impl(&mut self, mut seen: Vec<Type>, ty: &Type) -> Type {
-        match &**ty {
+        match &*ty.kind {
             TypeKind::TVar(v) => {
                 match self.store.get(&v) {
                     None => ty.clone(),
@@ -293,11 +266,11 @@ impl State {
                 }
             }
             TypeKind::TArr(h, t) => {
-                let hp = self.resolve_impl(seen.clone(), h);
-                let tp = self.resolve_impl(seen, t);
+                let hp = self.resolve_impl(seen.clone(), &h);
+                let tp = self.resolve_impl(seen, &t);
                 TArr(hp, tp)
             }
-            TypeKind::TLam(v, t) => TLam(v, self.resolve_impl(seen, t)),
+            TypeKind::TLam(v, t) => TLam(&v, self.resolve_impl(seen, &t)),
             _ => ty.clone(),
         }
     }
@@ -308,8 +281,7 @@ impl State {
     pub fn unify2(&mut self, ty1p: &Type, ty2p: &Type) {
         let ty1 = self.resolve(ty1p);
         let ty2 = self.resolve(ty2p);
-        match (&*ty1, &*ty2) {
-            _ if ty1 == ty2 => return,
+        match (&*ty1.kind, &*ty2.kind) {
             (TypeKind::TVar(v1), _) => {
                 self.store.insert(*v1, ty2);
             }
@@ -317,9 +289,10 @@ impl State {
                 self.store.insert(*v2, ty1);
             }
             (TypeKind::TArr(h1, t1), TypeKind::TArr(h2, t2)) => {
-                self.unify2(h1, h2);
-                self.unify2(t1, t2);
+                self.unify2(&h1, &h2);
+                self.unify2(&t1, &t2);
             }
+            _ if ty1 == ty2 => return,
             _ => panic!("unable to unify ({:?},{:?})", ty1, ty2),
         }
     }
