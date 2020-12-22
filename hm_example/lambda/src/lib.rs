@@ -175,6 +175,7 @@ pub fn subst_ty(from: &Type, to: &Type, typ: &Type) -> Type {
 }
 
 use std::collections::HashMap;
+//use std::collections::HashSet;
 type Ctx = HashMap<String, Type>;
 
 pub fn prims() -> Ctx {
@@ -207,30 +208,37 @@ pub fn term_occurs() -> Term {
 // ----------------------------------------------------------------------------
 
 #[derive(Debug)]
-struct State {
-    store : HashMap<Int, Type>,
-    context : HashMap<String, Type>,
-    var_count : Int,
+pub struct State {
+    store: HashMap<Int, Type>,
+    context: HashMap<String, Type>,
+    var_count: Int,
 }
 
 impl State {
-    fn new_metavar(&mut self) -> Type {
+    fn new() -> State {
+        State {
+            store: HashMap::new(),
+            context: HashMap::new(),
+            var_count: 0,
+        }
+    }
+    pub fn new_metavar(&mut self) -> Type {
         let v = self.var_count;
         self.var_count = v + 1;
         TVar(v)
     }
 
-    fn instantiate(&mut self, t: &Type) -> Type {
+    pub fn instantiate(&mut self, t: &Type) -> Type {
         match &**t {
             TypeKind::TLam(v, ty) => {
                 let mv = self.new_metavar();
                 self.instantiate(&subst_ty(&TBVar(v), &mv, ty))
-            },
-            _ => t.clone()
+            }
+            _ => t.clone(),
         }
     }
 
-    fn infer2(&mut self, trm: &Term) -> Type {
+    pub fn infer2(&mut self, trm: &Term) -> Type {
         match &**trm {
             TermKind::KonstInt(_) => TInt(),
             TermKind::Unit => TUnit(),
@@ -238,39 +246,88 @@ impl State {
                 let ty = self.resolve(&self.context.get(s).unwrap().clone());
                 self.instantiate(&ty)
             }
-            TermKind::App(t1,t2) => {
+            TermKind::App(t1, t2) => {
                 let ty1 = self.infer2(&t1);
                 let ty2 = self.infer2(&t2);
                 match *ty1.0 {
-                    TypeKind::TArr(x,y) => {
-                        self.unify2(&x,&ty2);
+                    TypeKind::TArr(x, y) => {
+                        self.unify2(&x, &ty2);
                         y
                     }
                     TypeKind::TVar(_) => {
                         let h = self.new_metavar();
                         let t = self.new_metavar();
-                        self.unify2(&ty1, &TArr(h.clone(),t.clone()));
+                        self.unify2(&ty1, &TArr(h.clone(), t.clone()));
                         self.unify2(&h, &ty2);
                         t
                     }
-                    _ => panic!("Unhandled ty1= {:?}", ty1)
+                    _ => panic!("Unhandled ty1= {:?}", ty1),
                 }
             }
-            TermKind::Lam(v,t1) => {
+            TermKind::Lam(v, t1) => {
                 let mv = self.new_metavar();
-                self.context.insert(v.to_string(),mv.clone());
+                self.context.insert(v.to_string(), mv.clone());
                 let tbody = self.infer2(&t1);
                 TArr(mv, tbody)
             }
         }
     }
 
-    fn resolve(&mut self, _t: &Type) -> Type {
-        unimplemented!()
+    fn resolve_impl(&mut self, mut seen: Vec<Type>, ty: &Type) -> Type {
+        match &**ty {
+            TypeKind::TVar(v) => {
+                match self.store.get(&v) {
+                    None => ty.clone(),
+                    Some(resp) => {
+                        // occurs check
+                        match seen.contains(&resp) {
+                            true => panic!("occurs check: ({:?},{:?})", resp, ty),
+                            false => (),
+                        };
+                        seen.push(resp.clone());
+                        let resp = &resp.clone();
+                        let res = self.resolve_impl(seen, resp);
+                        // zonking
+                        self.store.insert(*v, res.clone());
+                        res
+                    }
+                }
+            }
+            TypeKind::TArr(h, t) => {
+                let hp = self.resolve_impl(seen.clone(), h);
+                let tp = self.resolve_impl(seen, t);
+                TArr(hp, tp)
+            }
+            TypeKind::TLam(v, t) => TLam(v, self.resolve_impl(seen, t)),
+            _ => ty.clone(),
+        }
+    }
+    pub fn resolve(&mut self, ty: &Type) -> Type {
+        self.resolve_impl(Vec::new(), ty)
     }
 
-    fn unify2(&mut self, _t1: &Type, _t2: &Type) {
-        unimplemented!()
+    pub fn unify2(&mut self, ty1p: &Type, ty2p: &Type) {
+        let ty1 = self.resolve(ty1p);
+        let ty2 = self.resolve(ty2p);
+        match (&*ty1, &*ty2) {
+            _ if ty1 == ty2 => return,
+            (TypeKind::TVar(v1), _) => {
+                self.store.insert(*v1, ty2);
+            }
+            (_, TypeKind::TVar(v2)) => {
+                self.store.insert(*v2, ty1);
+            }
+            (TypeKind::TArr(h1, t1), TypeKind::TArr(h2, t2)) => {
+                self.unify2(h1, h2);
+                self.unify2(t1, t2);
+            }
+            _ => panic!("unable to unify ({:?},{:?})", ty1, ty2),
+        }
     }
 
+    pub fn run_infer(term: &Term) -> Type {
+        let mut state = State::new();
+        let infer = state.infer2(term);
+        state.resolve(&infer)
+    }
 }
