@@ -16,6 +16,9 @@ impl fmt::Display for Term {
 }
 
 impl Term {
+    fn kind(&self) -> &TermKind {
+        return &*self.kind;
+    }
     pub fn new(kind: TermKind) -> Term {
         Term {
             kind: Box::new(kind),
@@ -72,6 +75,9 @@ pub struct Type {
     kind: Box<TypeKind>,
 }
 impl Type {
+    pub fn kind(&self) -> &TypeKind {
+        return &*self.kind;
+    }
     pub fn new(kind: TypeKind) -> Type {
         Type {
             kind: Box::new(kind),
@@ -145,7 +151,7 @@ macro_rules! hashmap {
 */
 
 pub fn subst_ty(from: &Type, to: &Type, typ: &Type) -> Type {
-    match &*typ.kind {
+    match typ.kind() {
         _ if from == typ => to.clone(),
         TypeKind::TLam(v, ty) => TLam(v, subst_ty(from, to, ty)),
         TypeKind::TArr(ty1, ty2) => TArr(
@@ -180,7 +186,7 @@ impl State {
     }
 
     fn instantiate(&mut self, t: &Type) -> Type {
-        match &*t.kind {
+        match t.kind() {
             TypeKind::TLam(v, ty) => {
                 let mv = self.new_metavar();
                 self.instantiate(&subst_ty(&TBVar(v), &mv, ty))
@@ -190,7 +196,7 @@ impl State {
     }
 
     fn infer2(&mut self, trm: &Term) -> Type {
-        match &*trm.kind {
+        match trm.kind() {
             TermKind::KonstInt(_) => TInt(),
             TermKind::Unit => TUnit(),
             TermKind::Var(s) => {
@@ -200,10 +206,10 @@ impl State {
             TermKind::App(t1, t2) => {
                 let ty1 = self.infer2(&t1);
                 let ty2 = self.infer2(&t2);
-                match *ty1.kind {
+                match ty1.kind() {
                     TypeKind::TArr(x, y) => {
                         self.unify2(&x, &ty2);
-                        y
+                        y.clone()
                     }
                     TypeKind::TVar(_) => {
                         let h = self.new_metavar();
@@ -225,7 +231,7 @@ impl State {
     }
 
     fn resolve_impl(&mut self, mut seen: Vec<Type>, ty: &Type) -> Type {
-        match &*ty.kind {
+        match ty.kind() {
             TypeKind::TVar(v) => {
                 match self.store.get(&v) {
                     None => ty.clone(),
@@ -259,7 +265,7 @@ impl State {
     fn unify2(&mut self, ty1p: &Type, ty2p: &Type) {
         let ty1 = self.resolve(ty1p);
         let ty2 = self.resolve(ty2p);
-        match (&*ty1.kind, &*ty2.kind) {
+        match (ty1.kind(), ty2.kind()) {
             (TypeKind::TVar(v1), _) => {
                 self.store.insert(*v1, ty2);
             }
