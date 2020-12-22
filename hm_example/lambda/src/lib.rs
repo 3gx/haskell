@@ -80,27 +80,27 @@ impl Type {
     }
     #[allow(non_snake_case)]
     pub fn Lam(s: &str, ta: Type) -> Type {
-        Type::new(TypeKind::TLam(s.to_string(), ta))
+        Type::new(TypeKind::Lam(s.to_string(), ta))
     }
     #[allow(non_snake_case)]
     pub fn BVar(s: &str) -> Type {
-        Type::new(TypeKind::TBVar(s.to_string()))
+        Type::new(TypeKind::BVar(s.to_string()))
     }
     #[allow(non_snake_case)]
     pub fn Var(i: Int) -> Type {
-        Type::new(TypeKind::TVar(i))
+        Type::new(TypeKind::Var(i))
     }
     #[allow(non_snake_case)]
     pub fn Arr(ta: Type, tb: Type) -> Type {
-        Type::new(TypeKind::TArr(ta, tb))
+        Type::new(TypeKind::Arr(ta, tb))
     }
     #[allow(non_snake_case)]
     pub fn Int() -> Type {
-        Type::new(TypeKind::TInt)
+        Type::new(TypeKind::Int)
     }
     #[allow(non_snake_case)]
     pub fn Unit() -> Type {
-        Type::new(TypeKind::TUnit)
+        Type::new(TypeKind::Unit)
     }
 }
 impl fmt::Display for Type {
@@ -111,22 +111,22 @@ impl fmt::Display for Type {
 
 #[derive(Eq, PartialEq, Debug, Clone)]
 pub enum TypeKind {
-    TLam(String, Type),
-    TBVar(String),
-    TVar(Int),
-    TArr(Type, Type),
-    TInt,
-    TUnit,
+    Lam(String, Type),
+    BVar(String),
+    Var(Int),
+    Arr(Type, Type),
+    Int,
+    Unit,
 }
 impl fmt::Display for TypeKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            TypeKind::TLam(s, t) => write!(f, "TLam(\"{}\", {})", s, t),
-            TypeKind::TBVar(s) => write!(f, "TBVar(\"{}\")", s),
-            TypeKind::TVar(i) => write!(f, "Var({})", i),
-            TypeKind::TArr(ta, tb) => write!(f, "TArr({}, {})", ta, tb),
-            TypeKind::TInt => write!(f, "TInt"),
-            TypeKind::TUnit => write!(f, "TUnit"),
+            TypeKind::Lam(s, t) => write!(f, "TLam(\"{}\", {})", s, t),
+            TypeKind::BVar(s) => write!(f, "TBVar(\"{}\")", s),
+            TypeKind::Var(i) => write!(f, "TVar({})", i),
+            TypeKind::Arr(ta, tb) => write!(f, "TArr({}, {})", ta, tb),
+            TypeKind::Int => write!(f, "TInt"),
+            TypeKind::Unit => write!(f, "TUnit"),
         }
     }
 }
@@ -148,8 +148,8 @@ macro_rules! hashmap {
 pub fn subst_ty(from: &Type, to: &Type, typ: &Type) -> Type {
     match typ.kind() {
         _ if from == typ => to.clone(),
-        TypeKind::TLam(v, ty) => Type::Lam(v, subst_ty(from, to, ty)),
-        TypeKind::TArr(ty1, ty2) => Type::Arr(
+        TypeKind::Lam(v, ty) => Type::Lam(v, subst_ty(from, to, ty)),
+        TypeKind::Arr(ty1, ty2) => Type::Arr(
             subst_ty(from, to, ty1), //
             subst_ty(from, to, ty2),
         ),
@@ -182,7 +182,7 @@ impl State {
 
     fn instantiate(&mut self, t: &Type) -> Type {
         match t.kind() {
-            TypeKind::TLam(v, ty) => {
+            TypeKind::Lam(v, ty) => {
                 let mv = self.new_metavar();
                 self.instantiate(&subst_ty(&Type::BVar(v), &mv, ty))
             }
@@ -202,11 +202,11 @@ impl State {
                 let ty1 = self.infer2(&t1);
                 let ty2 = self.infer2(&t2);
                 match ty1.kind() {
-                    TypeKind::TArr(x, y) => {
+                    TypeKind::Arr(x, y) => {
                         self.unify2(&x, &ty2);
                         y.clone()
                     }
-                    TypeKind::TVar(_) => {
+                    TypeKind::Var(_) => {
                         let h = self.new_metavar();
                         let t = self.new_metavar();
                         self.unify2(&ty1, &Type::Arr(h.clone(), t.clone()));
@@ -227,7 +227,7 @@ impl State {
 
     fn resolve_impl(&mut self, mut seen: Vec<Type>, ty: &Type) -> Type {
         match ty.kind() {
-            TypeKind::TVar(v) => {
+            TypeKind::Var(v) => {
                 match self.store.get(&v) {
                     None => ty.clone(),
                     Some(resp) => {
@@ -244,12 +244,12 @@ impl State {
                     }
                 }
             }
-            TypeKind::TArr(h, t) => {
+            TypeKind::Arr(h, t) => {
                 let hp = self.resolve_impl(seen.clone(), &h);
                 let tp = self.resolve_impl(seen, &t);
                 Type::Arr(hp, tp)
             }
-            TypeKind::TLam(v, t) => Type::Lam(&v, self.resolve_impl(seen, &t)),
+            TypeKind::Lam(v, t) => Type::Lam(&v, self.resolve_impl(seen, &t)),
             _ => ty.clone(),
         }
     }
@@ -261,13 +261,13 @@ impl State {
         let ty1 = self.resolve(ty1p);
         let ty2 = self.resolve(ty2p);
         match (ty1.kind(), ty2.kind()) {
-            (TypeKind::TVar(v1), _) => {
+            (TypeKind::Var(v1), _) => {
                 self.store.insert(*v1, ty2);
             }
-            (_, TypeKind::TVar(v2)) => {
+            (_, TypeKind::Var(v2)) => {
                 self.store.insert(*v2, ty1);
             }
-            (TypeKind::TArr(h1, t1), TypeKind::TArr(h2, t2)) => {
+            (TypeKind::Arr(h1, t1), TypeKind::Arr(h2, t2)) => {
                 self.unify2(&h1, &h2);
                 self.unify2(&t1, &t2);
             }
